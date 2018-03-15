@@ -1,0 +1,11 @@
+(jbuild_version 1)
+
+(library
+ ((name        orxgboost)
+  (public_name orxgboost)
+  (modules (result utls xgboost))
+  (libraries (dolog))))
+
+(executables
+ ((names     (test))
+  (libraries (dolog batteries cpm minicli parmap))))
