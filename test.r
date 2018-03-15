@@ -1,28 +1,30 @@
-library('e1071')
+library('xgboost')
 
 # matrix with n rows (observations) and p columns (features)
-x = as.matrix(read.table("data/train_data.txt"))
-#x = read.matrix.csr("data/train_data.csr", fac = FALSE)
+x <- as.matrix(read.table("data/train_data.txt", colClasses = "numeric"))
+
+#x <- read.matrix.csr("data/train_data.csr", fac = FALSE)
+# FBR: in the sparse case, we should use a dgCMatrix
 
 # vector of size n and values +1 or -1 only
-y = as.factor(as.vector(read.table("data/train_labels.txt"),
-                        mode = "numeric"))
+y <- as.vector(read.table("data/train_labels.txt"), mode = "numeric")
+
+# transform [-1,1] to [0,1]
+lut <- data.frame(old = c(-1.0,1.0), new = c(0.0,1.0))
+labels <- lut$new[match(y, lut$old)]
 
 # check number of rows
-stopifnot(nrow(x) == length(y))
+stopifnot(nrow(x) == length(labels))
 
-# RBF kernel parameters
-cost = 1
-gamma = 1 / ncol(x)
+# train
+gbtree <- xgboost(data = x, label = labels, nrounds = 10, objective = "binary:logistic")
 
-model <- svm(x, y, type = 'C-classification', scale = FALSE,
-             kernel = "radial", cost, gamma)
+save(gbtree, file="r_gbtree_model.bin")
 
-save(model, file="r_svm_model.bin")
+load("r_gbtree_model.bin")
 
-load("r_svm_model.bin")
-
-values = attributes(predict(model, newdata = x, decision.values = TRUE))$decision.values
+# stupid test on training data; don't do this at home !!!
+values <- predict(gbtree, x)
 
 write.table(values, file = "data/predictions.txt", sep = "\n", row.names = F, col.names = F)
 
