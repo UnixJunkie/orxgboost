@@ -3,7 +3,7 @@
 (library
  ((name        orxgboost)
   (public_name orxgboost)
-  (modules (result utls xgboost))
+  (modules (result utls gbtree))
   (libraries (dolog))))
 
 (executables
