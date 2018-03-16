@@ -3,9 +3,6 @@ library('xgboost')
 # matrix with n rows (observations) and p columns (features)
 x <- as.matrix(read.table("data/train_data.txt", colClasses = "numeric"))
 
-#x <- read.matrix.csr("data/train_data.csr", fac = FALSE)
-# FBR: in the sparse case, we should use a dgCMatrix
-
 # vector of size n and values +1 or -1 only
 y <- as.vector(read.table("data/train_labels.txt"), mode = "numeric")
 
