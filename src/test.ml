@@ -17,42 +17,42 @@ let main () =
   let sparse_data_fn = "data/train_data.csr" in
   let labels_fn = "data/train_labels.txt" in
   let preds =
-    let params = Xgboost.default_gbtree_params () in
+    let params = Gbtree.default_gbtree_params () in
     let model =
-      Xgboost.train
+      Gbtree.train
         ~debug:true
         Dense
         10
         params
         data_fn
         labels_fn in
-    Xgboost.read_predictions
-      (Xgboost.predict ~debug:true Dense model data_fn) in
+    Gbtree.read_predictions
+      (Gbtree.predict ~debug:true Dense model data_fn) in
   let sparse_preds =
-    let params = Xgboost.default_gbtree_params () in
-    let sparsity = Xgboost.Sparse 1831 in
+    let params = Gbtree.default_gbtree_params () in
+    let sparsity = Gbtree.Sparse 1831 in
     let model =
-      Xgboost.train
+      Gbtree.train
         ~debug:true
         sparsity
         10
         params
         sparse_data_fn
         labels_fn in
-    Xgboost.read_predictions
-      (Xgboost.predict ~debug:true sparsity model sparse_data_fn) in
+    Gbtree.read_predictions
+      (Gbtree.predict ~debug:true sparsity model sparse_data_fn) in
   let lin_preds =
-    let params = Xgboost.default_linear_params () in
+    let params = Gbtree.default_linear_params () in
     let model =
-      Xgboost.train
+      Gbtree.train
         ~debug:true
         Dense
         10
         params
         data_fn
         labels_fn in
-    let preds_fn = Xgboost.predict ~debug:true Dense model data_fn in
-    Xgboost.read_predictions preds_fn in
+    let preds_fn = Gbtree.predict ~debug:true Dense model data_fn in
+    Gbtree.read_predictions preds_fn in
   assert(List.length preds = 88);
   assert(List.length sparse_preds = 88);
   assert(List.length lin_preds = 88);
