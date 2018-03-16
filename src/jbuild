@@ -8,4 +8,4 @@
 
 (executables
  ((names     (test))
-  (libraries (dolog batteries cpm minicli parmap))))
+  (libraries (dolog batteries cpm))))
