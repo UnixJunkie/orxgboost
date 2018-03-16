@@ -24,11 +24,13 @@ val default_linear_params: unit -> booster
 
 val default_gbtree_params: unit -> booster
 
+type nb_columns = int
+type sparsity = Dense
+              | Sparse of nb_columns
+
 val train: ?debug:bool ->
-  sparsity -> int -> booster -> filename -> filename -> Orxgboost.Result.t
+  sparsity -> int -> booster -> filename -> filename -> Result.t
 
-val predict: ?debug:bool ->
-  sparsity -> Orxgboost.Result.t -> filename -> Orxgboost.Result.t
+val predict: ?debug:bool -> sparsity -> Result.t -> filename -> Result.t
 
-val read_predictions: ?debug:bool ->
-  Orxgboost.Result.t -> float list
+val read_predictions: ?debug:bool -> Result.t -> float list
