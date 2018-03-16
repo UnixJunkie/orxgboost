@@ -10,6 +10,8 @@ end
 
 module ROC = MakeROC.Make(Score_label)
 
+(* FBR: test reading data from sparse matrix *)
+
 let main () =
   Log.set_log_level Log.DEBUG;
   Log.color_on ();
@@ -29,11 +31,20 @@ let main () =
         labels_fn in
     let preds_fn = Xgboost.predict ~debug:true Dense model data_fn in
     Xgboost.read_predictions preds_fn in
-  (* let sparse_lin_preds =
-   *   let sparse_lin_model = Xgboost.train ~debug:true (Sparse 1831) ~cost Xgboost.Linear sparse_data_fn labels_fn in
-   *   let sparse_lin_preds_fn = Xgboost.predict ~debug:true (Sparse 1831) sparse_lin_model sparse_data_fn in
-   *   Xgboost.read_predictions sparse_lin_preds_fn in *)
+  let lin_preds =
+    let params = Xgboost.default_linear_params () in
+    let model =
+      Xgboost.train
+        ~debug:true
+        Dense
+        10
+        params
+        data_fn
+        labels_fn in
+    let preds_fn = Xgboost.predict ~debug:true Dense model data_fn in
+    Xgboost.read_predictions preds_fn in
   assert(List.length preds = 88);
+  assert(List.length lin_preds = 88);
   (* List.iter (printf "%f\n") predictions *)
   let labels =
     let labels_line = Utls.with_in_file labels_fn input_line in
@@ -44,7 +55,9 @@ let main () =
         | other -> failwith other
       ) label_strings in
   let auc = ROC.auc (List.combine labels preds) in
-  printf "AUC: %.3f\n" auc
+  let lin_auc = ROC.auc (List.combine labels lin_preds) in
+  printf "AUC: %.3f\n" auc;
+  printf "lin AUC: %.3f\n" lin_auc
   (* let sparse_lin_auc = ROC.auc (List.combine labels sparse_lin_preds) in
    * printf "sparse Lin AUC: %.3f\n" sparse_lin_auc; *)
 
