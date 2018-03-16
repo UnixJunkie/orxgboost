@@ -60,13 +60,34 @@ let collect_script_and_log =
 
 type nb_columns = int
 type sparsity = Dense
-              (* | Sparse of nb_columns *)
+              | Sparse of nb_columns
+
+let read_csr_file =
+"read_csr_file <- function(file, ncol = NULL)\n\
+{\n\
+    lines <- readLines(file)\n\
+    nrow <- length(lines)\n\
+    res <- Matrix(0, nrow, ncol)\n\
+    i <- 1\n\
+    for (line in lines) {\n\
+      cols = strsplit(line, '[ ]+')\n\
+      for (col in cols[[1]]) {\n\
+        s <- strsplit(col, ':')\n\
+        j <- as.integer(s[[1]][1])\n\
+        k <- as.numeric(s[[1]][2])\n\
+        res[i, j] <- k\n\
+      }\n\
+      i <- i + 1\n\
+    }\n\
+    res\n\
+}"
 
 let read_matrix_str maybe_sparse data_fn =
   match maybe_sparse with
-  | Dense -> sprintf "as.matrix(read.table('%s', colClasses = 'numeric'))" data_fn
-  (* | Sparse ncol ->
-   *   sprintf "read.matrix.csr('%s', fac = FALSE, ncol = %d)" data_fn ncol *)
+  | Dense ->
+    sprintf "as.matrix(read.table('%s', colClasses = 'numeric'))" data_fn
+  | Sparse ncol ->
+    sprintf "read_csr_file('%s', ncol = %d)" data_fn ncol
 
 (* train model and return the filename it was saved to upon success *)
 let train
@@ -84,7 +105,9 @@ let train
   let verbose_str = string_of_debug debug in
   Utls.with_out_file r_script_fn (fun out ->
       fprintf out
-        "library('xgboost')\n\
+        "library(xgboost)\n\
+         library(Matrix)\n\
+         %s\n\
          x <- %s\n\
          y <- as.vector(read.table('%s'), mode = 'numeric')\n\
          lut <- data.frame(old = c(-1.0, 1.0), new = c(0.0, 1.0))\n\
@@ -95,6 +118,7 @@ let train
                          eval_metric = 'auc', %s)\n\
          xgb.save(tree, '%s')\n\
          quit()\n"
+        read_csr_file
         read_x_str labels_fn verbose_str nrounds params_str model_fn
     );
   let r_log_fn = Filename.temp_file "orxgboost_train_" ".log" in
@@ -121,7 +145,9 @@ let predict ?debug:(debug = false)
     let read_x_str = read_matrix_str sparse data_fn in
     Utls.with_out_file r_script_fn (fun out ->
         fprintf out
-          "library('xgboost')\n\
+          "library(xgboost)\n\
+           library(Matrix)\n\
+           %s\n\
            newdata <- %s\n\
            tree <- xgb.load('%s')\n\
            values <- predict(tree, newdata)\n\
@@ -129,7 +155,7 @@ let predict ?debug:(debug = false)
            write.table(values, file = '%s', sep = '\\n', \
                        row.names = FALSE, col.names = FALSE)\n\
            quit()\n"
-          read_x_str model_fn predictions_fn
+          read_csr_file read_x_str model_fn predictions_fn
       );
     (* execute it *)
     let r_log_fn = Filename.temp_file "orxgboost_predict_" ".log" in
