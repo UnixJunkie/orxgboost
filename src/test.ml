@@ -10,8 +10,6 @@ end
 
 module ROC = MakeROC.Make(Score_label)
 
-(* FBR: test reading data from sparse matrix *)
-
 let main () =
   Log.set_log_level Log.DEBUG;
   Log.color_on ();
@@ -73,7 +71,5 @@ let main () =
   printf "AUC: %.3f\n" auc;
   printf "sparse AUC: %.3f\n" sparse_auc;
   printf "lin AUC: %.3f\n" lin_auc
-  (* let sparse_lin_auc = ROC.auc (List.combine labels sparse_lin_preds) in
-   * printf "sparse Lin AUC: %.3f\n" sparse_lin_auc; *)
 
 let () = main ()
