@@ -50,6 +50,10 @@ let string_of_params = function
     sprintf "booster = 'gblinear', lambda = %f, lambda_bias = %f, alpha = %f"
       lambda lambda_bias alpha
 
+let string_of_debug = function
+  | true -> "verbose = 1" (* makes xgboost verbose *)
+  | false -> "verbose = 0" (* makes xgboost silent *)
+
 (* capture everything in case of error *)
 let collect_script_and_log =
   Utls.collect_script_and_log
@@ -64,8 +68,6 @@ let read_matrix_str maybe_sparse data_fn =
   (* | Sparse ncol ->
    *   sprintf "read.matrix.csr('%s', fac = FALSE, ncol = %d)" data_fn ncol *)
 
-(* FBR: debug should change the silent flag of xgboost *)
-
 (* train model and return the filename it was saved to upon success *)
 let train
     ?debug:(debug = false)
@@ -79,6 +81,7 @@ let train
   let r_script_fn = Filename.temp_file "orxgboost_train_" ".r" in
   let read_x_str = read_matrix_str sparse data_fn in
   let params_str = string_of_params params in
+  let verbose_str = string_of_debug debug in
   Utls.with_out_file r_script_fn (fun out ->
       fprintf out
         "library('xgboost')\n\
@@ -87,10 +90,10 @@ let train
          lut <- data.frame(old = c(-1.0, 1.0), new = c(0.0, 1.0))\n\
          label <- lut$new[match(y, lut$old)]\n\
          stopifnot(nrow(x) == length(label))\n\
-         gbtree <- xgboost(data = x, label, nrounds = %d, objective = 'binary:logitraw', eval_metric = 'auc', %s)\n\
+         gbtree <- xgboost(data = x, label, %s, nrounds = %d, objective = 'binary:logitraw', eval_metric = 'auc', %s)\n\
          save(gbtree, file='%s')\n\
          quit()\n"
-        read_x_str labels_fn nrounds params_str model_fn
+        read_x_str labels_fn verbose_str nrounds params_str model_fn
     );
   let r_log_fn = Filename.temp_file "orxgboost_train_" ".log" in
   (* execute it *)
