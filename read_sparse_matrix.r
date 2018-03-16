@@ -19,5 +19,5 @@ read_csr_file <- function(file, ncol = NULL)
 }
 
 file='data/small.csr'
-z <- read_csr_file(file, 4)
+z <- read_csr_file(file, 10)
 z
