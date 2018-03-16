@@ -21,21 +21,21 @@ type linear_params = { lambda: float; (* L2 regularization term on weights *)
                        lambda_bias: float; (* L2 regularization term on bias *)
                        alpha: float } (* L1 regularization term on weights *)
 
-let default_linear_params =
-  { lambda = 0.0; lambda_bias = 0.0; alpha = 0.0 }
-
-let default_gbtree_params =
-  { eta = 0.3;
-    gamma = 1.0;
-    max_depth = 6;
-    min_child_weight = 1.0;
-    subsample = 1.0;
-    colsample_bytree = 1.0;
-    num_parallel_tree = 1 }
-
 type booster =
   | Gbtree of gbtree_params
   | Gblinear of linear_params
+
+let default_linear_params () =
+  Gblinear { lambda = 0.0; lambda_bias = 0.0; alpha = 0.0 }
+
+let default_gbtree_params () =
+  Gbtree { eta = 0.3;
+           gamma = 1.0;
+           max_depth = 6;
+           min_child_weight = 1.0;
+           subsample = 1.0;
+           colsample_bytree = 1.0;
+           num_parallel_tree = 1 }
 
 let string_of_params = function
   | Gbtree { eta; gamma; max_depth; min_child_weight; subsample;
@@ -85,13 +85,15 @@ let train
   Utls.with_out_file r_script_fn (fun out ->
       fprintf out
         "library('xgboost')\n\
-         x = %s\n\
+         x <- %s\n\
          y <- as.vector(read.table('%s'), mode = 'numeric')\n\
          lut <- data.frame(old = c(-1.0, 1.0), new = c(0.0, 1.0))\n\
          label <- lut$new[match(y, lut$old)]\n\
          stopifnot(nrow(x) == length(label))\n\
-         gbtree <- xgboost(data = x, label, %s, nrounds = %d, objective = 'binary:logitraw', eval_metric = 'auc', %s)\n\
-         save(gbtree, file='%s')\n\
+         tree <- xgboost(data = x, label, %s, nrounds = %d, \
+                         objective = 'binary:logitraw', \
+                         eval_metric = 'auc', %s)\n\
+         xgb.save(tree, '%s')\n\
          quit()\n"
         read_x_str labels_fn verbose_str nrounds params_str model_fn
     );
@@ -113,25 +115,24 @@ let predict ?debug:(debug = false)
   match maybe_model_fn with
   | Error err -> Error err
   | Ok model_fn ->
-    let predictions_fn = Filename.temp_file "orsvm_e1071_predictions_" ".txt" in
+    let predictions_fn = Filename.temp_file "orxgboost_predictions_" ".txt" in
     (* create R script in temp file *)
-    let r_script_fn = Filename.temp_file "orsvm_e1071_predict_" ".r" in
+    let r_script_fn = Filename.temp_file "orxgboost_predict_" ".r" in
     let read_x_str = read_matrix_str sparse data_fn in
     Utls.with_out_file r_script_fn (fun out ->
         fprintf out
-          "library('e1071')\n\
-           newdata = %s\n\
-           load('%s')\n\
-           values = attributes(predict(model, newdata, decision.values = TRUE)\
-                              )$decision.values\n\
+          "library('xgboost')\n\
+           newdata <- %s\n\
+           tree <- xgb.load('%s')\n\
+           values <- predict(tree, newdata)\n\
            stopifnot(nrow(newdata) == length(values))\n\
            write.table(values, file = '%s', sep = '\\n', \
-           row.names = FALSE, col.names = FALSE)\n\
+                       row.names = FALSE, col.names = FALSE)\n\
            quit()\n"
           read_x_str model_fn predictions_fn
       );
     (* execute it *)
-    let r_log_fn = Filename.temp_file "orsvm_e1071_predict_" ".log" in
+    let r_log_fn = Filename.temp_file "orxgboost_predict_" ".log" in
     let cmd = sprintf "R --vanilla --slave < %s 2>&1 > %s" r_script_fn r_log_fn in
     if debug then Log.debug "%s" cmd;
     if Sys.command cmd <> 0 then
