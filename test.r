@@ -19,9 +19,9 @@ stopifnot(nrow(x) == length(labels))
 # train
 gbtree <- xgboost(data = x, label = labels, nrounds = 300, objective = "binary:logitraw", eval_metric = "auc", eta = 0.01, subsample = 0.5)
 
-save(gbtree, file="r_gbtree_model.bin")
+xgb.save(gbtree, "r_gbtree_model.bin")
 
-load("r_gbtree_model.bin")
+xgb.load("r_gbtree_model.bin")
 
 # stupid test on training data; don't do this at home !!!
 values <- predict(gbtree, x)
