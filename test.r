@@ -17,7 +17,7 @@ labels <- lut$new[match(y, lut$old)]
 stopifnot(nrow(x) == length(labels))
 
 # train
-gbtree <- xgboost(data = x, label = labels, nrounds = 10, objective = "binary:logistic")
+gbtree <- xgboost(data = x, label = labels, nrounds = 300, objective = "binary:logitraw", eval_metric = "auc", eta = 0.01, subsample = 0.5)
 
 save(gbtree, file="r_gbtree_model.bin")
 
