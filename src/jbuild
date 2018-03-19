@@ -8,4 +8,5 @@
 
 (executables
  ((names     (test))
+  (modules (test))
   (libraries (dolog batteries cpm))))
