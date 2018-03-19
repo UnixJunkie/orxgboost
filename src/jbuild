@@ -9,4 +9,4 @@
 (executables
  ((names     (test))
   (modules (test))
-  (libraries (dolog batteries cpm))))
+  (libraries (dolog batteries cpm orxgboost))))

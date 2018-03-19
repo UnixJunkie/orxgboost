@@ -1,6 +1,8 @@
 open Printf
 
+module Gbtree = Orxgboost.Gbtree
 module L = BatList
+module Utls = Orxgboost.Utls
 
 module Score_label = struct
   type t = bool * float (* (label, pred_score) *)
