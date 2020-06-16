@@ -1,6 +1,7 @@
 open Printf
 
 module L = List
+module Log = Dolog.Log
 
 type filename = string
 

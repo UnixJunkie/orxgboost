@@ -1,6 +1,7 @@
 open Printf
 
 module L = List
+module Log = Dolog.Log
 
 let with_in_file fn f =
   let input = open_in_bin fn in
