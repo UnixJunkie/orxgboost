@@ -2,6 +2,7 @@ open Printf
 
 module Gbtree = Orxgboost.Gbtree
 module L = BatList
+module Log = Dolog.Log
 module Utls = Orxgboost.Utls
 
 module Score_label = struct
@@ -10,7 +11,7 @@ module Score_label = struct
   let get_score (_, s) = s
 end
 
-module ROC = MakeROC.Make(Score_label)
+module ROC = Cpm.MakeROC.Make(Score_label)
 
 let main () =
   Log.set_log_level Log.DEBUG;
