@@ -189,8 +189,26 @@ let main () =
         Log.info "shuffle -> train/test split (p=%.2f)" train_portion;
         let train_fn, test_fn =
           shuffle_then_cut seed train_portion train_fn' in
-        ignore(train_test
-                 verbose save_or_load no_plot config train_fn test_fn)
+        let eta_range = [0.01; 0.02; 0.05; 0.1; 0.2; 0.5; 1.0] in
+        let lambda_range = [0.01; 0.02; 0.05; 0.1; 0.2; 0.5; 1.; 2.; 5.; 10.; 20.; 50.; 100.] in
+        let alpha_range = lambda_range in
+        let rounds_range = [1; 10; 20; 30; 40; 50; 60; 70; 80; 90; 100;
+                            110; 120; 130; 140; 150; 160; 170; 180; 190; 200] in
+        let configs = ref [] in
+        L.iter (fun e ->
+            L.iter (fun l ->
+                L.iter (fun a ->
+                    L.iter (fun n ->
+                        configs := (e, l, a, n) :: !configs
+                      ) rounds_range
+                  ) alpha_range
+              ) lambda_range
+          ) eta_range;
+        L.iter (fun (e, l, a, n) ->
+            let conf = Gblinear.make_params e l a n in
+            let r2 = train_test verbose save_or_load no_plot conf train_fn test_fn in
+            Log.info "(e,l,a,n):r2 (%.2f, %.2f, %.2f, %d):%.3f" e l a n r2;
+          ) !configs
       end
 
 let () = main ()
