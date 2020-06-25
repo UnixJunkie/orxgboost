@@ -13,6 +13,9 @@ type params = { eta: float; (* learning rate in [0.0:1.0] *)
                 alpha: float; (* L1 regularization term on weights *)
                 nrounds: int (* number of training rounds *) }
 
+let make_params eta lambda alpha nrounds =
+  { eta; lambda; alpha; nrounds }
+
 (* train model and return the filename it was saved to upon success *)
 let train
     ?debug:(debug = false)
