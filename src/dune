@@ -1,8 +1,8 @@
 (library
   (name orxgboost)
   (public_name orxgboost)
-  (modules result utls gbtree)
-  (libraries dolog))
+  (modules result utls gbtree gblinear)
+  (libraries batteries dolog))
 
 (executables
   (names test)
