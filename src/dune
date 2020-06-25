@@ -8,3 +8,9 @@
   (names test)
   (modules test)
   (libraries dolog batteries cpm orxgboost))
+
+(executables
+  (names model)
+  (public_names orxgboost_model)
+  (modules model)
+  (libraries minicli dolog batteries cpm orxgboost))
