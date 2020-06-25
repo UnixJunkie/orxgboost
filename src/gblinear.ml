@@ -31,7 +31,8 @@ let train
          y <- training_set[, 1:1]\n\
          stopifnot(cols_count == length(y))\n\
          gbtree <- xgboost(data = x, label = y, booster='gblinear', eta = %f,\n\
-                           objective = 'reg:squarederror', eval_metric = 'rmse',\n\
+                           objective = 'reg:squarederror',\n\
+                           eval_metric = 'rmse',\n\
                            nrounds = %d, lambda = %f, alpha = %f)\n\
          xgb.save(gbtree, '%s')\n\
          quit()\n"
@@ -50,7 +51,8 @@ let train
 
 (* use model in 'model_fn' to predict decision values for test data in 'data_fn'
    and return the filename containing values upon success *)
-let predict ?debug:(debug = false) (maybe_model_fn: Result.t) (data_fn: filename): float list =
+let predict ?debug:(debug = false) (maybe_model_fn: Result.t) (data_fn: filename)
+  : float list =
   match maybe_model_fn with
   | Error err -> failwith ("Gblinear.predict: model error: " ^ err)
   | Ok model_fn ->
@@ -78,7 +80,8 @@ let predict ?debug:(debug = false) (maybe_model_fn: Result.t) (data_fn: filename
     let cmd = sprintf "R --vanilla --slave < %s 2>&1 > %s" r_script_fn r_log_fn in
     if debug then Log.debug "%s" cmd;
     if Sys.command cmd <> 0 then
-      match Utls.collect_script_and_log debug r_script_fn r_log_fn predictions_fn with
+      match Utls.collect_script_and_log
+              debug r_script_fn r_log_fn predictions_fn with
       | Ok _ -> assert(false)
       | Error err -> failwith ("Gblinear.predict: R error: " ^ err)
     else
