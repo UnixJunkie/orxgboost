@@ -1,6 +1,6 @@
 open Printf
 
-module L = List
+module L = BatList
 module Log = Dolog.Log
     
 let with_in_file fn f =
@@ -14,6 +14,19 @@ let with_out_file fn f =
   let res = f output in
   close_out output;
   res
+
+let lines_of_file fn =
+  with_in_file fn (fun input ->
+      let res, exn = L.unfold_exc (fun () -> input_line input) in
+      if exn <> End_of_file then
+        raise exn
+      else res
+    )
+
+let lines_to_file fn lines =
+  with_out_file fn (fun out ->
+      L.iter (fprintf out "%s\n") lines
+    )
 
 let append_file_to_buffer buff fn =
   with_in_file fn (fun input ->
@@ -72,3 +85,7 @@ let read_predictions (debug: bool) (maybe_predictions_fn: Result.t): float list 
     let res = float_list_of_file predictions_fn in
     if not debug then Sys.remove predictions_fn;
     res
+
+let run_command verbose cmd =
+  if verbose then Log.info "cmd: %s" cmd;
+  ignore(Sys.command cmd)
