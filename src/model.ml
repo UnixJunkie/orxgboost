@@ -72,7 +72,7 @@ let train verbose save_or_load config train_fn =
       begin
         Utls.run_command
           verbose (sprintf "mv %s %s" trained_model_fn model_fn);
-        Log.info "saving model to %s" model_fn;
+        Log.debug "saving model to %s" model_fn;
         model_fn
       end
 
@@ -91,7 +91,7 @@ let r2_plot no_plot actual preds =
      let title = sprintf "DNN model fit; R2=%.2f" test_R2 in
      Gnuplot.regr_plot title actual preds
   );
-  Log.info "R2_te: %.3f" test_R2;
+  Log.debug "R2_te: %.3f" test_R2;
   test_R2
 
 let train_test verbose save_or_load no_plot config train_fn test_fn =
@@ -100,7 +100,7 @@ let train_test verbose save_or_load no_plot config train_fn test_fn =
   r2_plot no_plot actual preds
 
 let main () =
-  Log.(set_log_level DEBUG);
+  Log.(set_log_level INFO);
   Log.color_on ();
   let argc, args = CLI.init () in
   let train_portion_def = 0.8 in
@@ -204,11 +204,29 @@ let main () =
                   ) alpha_range
               ) lambda_range
           ) eta_range;
-        L.iter (fun (e, l, a, n) ->
-            let conf = Gblinear.make_params e l a n in
-            let r2 = train_test verbose save_or_load no_plot conf train_fn test_fn in
-            Log.info "(e,l,a,n):r2 (%.2f, %.2f, %.2f, %d):%.3f" e l a n r2;
-          ) !configs
+        (* randomize them so that the parameter space exploration is not
+           sequential/boring *)
+        configs := L.shuffle !configs;
+        Log.info "configs: %d" (L.length !configs);
+        let _best =
+          Parany.Parmap.parfold ncores
+            (fun (e, l, a, n) ->
+               let conf = Gblinear.make_params e l a n in
+               let r2 =
+                 train_test verbose save_or_load no_plot conf train_fn test_fn in
+               (e, l, a, n, r2)
+            )
+            (fun (e, l, a, n, r2) (e', l', a', n', r2') ->
+               if r2' > r2 then
+                 (Log.info "(e,l,a,n):r2 (%.2f, %.2f, %.2f, %d):%.3f"
+                    e' l' a' n' r2';
+                  (e', l', a', n', r2'))
+               else
+                 (Log.warn "(e,l,a,n):r2 (%.2f, %.2f, %.2f, %d):%.3f"
+                    e' l' a' n' r2';
+                  (e, l, a, n, r2))
+            ) (0.0, 0.0, 0.0, 0, 0.0) !configs in
+        ()
       end
 
 let () = main ()
