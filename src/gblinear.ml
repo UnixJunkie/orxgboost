@@ -18,9 +18,9 @@ let train
     ?debug:(debug = false)
     (params: params)
     (data_fn: filename): Result.t =
-  let model_fn: filename = Filename.temp_file "orxgboost_model_" ".bin" in
+  let model_fn: filename = Filename.temp_file "gblinear_model_" ".bin" in
   (* create R script and store it in a temp file *)
-  let r_script_fn = Filename.temp_file "orxgboost_train_" ".r" in
+  let r_script_fn = Filename.temp_file "gblinear_train_" ".r" in
   Utls.with_out_file r_script_fn (fun out ->
       fprintf out
         "library(xgboost)\n\
@@ -38,7 +38,7 @@ let train
          quit()\n"
         data_fn params.eta params.nrounds params.lambda params.alpha model_fn
     );
-  let r_log_fn = Filename.temp_file "orxgboost_train_" ".log" in
+  let r_log_fn = Filename.temp_file "gblinear_train_" ".log" in
   (* execute it *)
   let cmd = sprintf "R --vanilla --slave < %s 2>&1 > %s" r_script_fn r_log_fn in
   if debug then Log.debug "%s" cmd;
@@ -56,9 +56,9 @@ let predict ?debug:(debug = false) (maybe_model_fn: Result.t) (data_fn: filename
   match maybe_model_fn with
   | Error err -> failwith ("Gblinear.predict: model error: " ^ err)
   | Ok model_fn ->
-    let predictions_fn = Filename.temp_file "orxgboost_predictions_" ".txt" in
+    let predictions_fn = Filename.temp_file "gblinear_predictions_" ".txt" in
     (* create R script in temp file *)
-    let r_script_fn = Filename.temp_file "orxgboost_predict_" ".r" in
+    let r_script_fn = Filename.temp_file "gblinear_predict_" ".r" in
     Utls.with_out_file r_script_fn (fun out ->
         fprintf out
           "library(xgboost)\n\
@@ -76,7 +76,7 @@ let predict ?debug:(debug = false) (maybe_model_fn: Result.t) (data_fn: filename
           data_fn model_fn predictions_fn
       );
     (* execute it *)
-    let r_log_fn = Filename.temp_file "orxgboost_predict_" ".log" in
+    let r_log_fn = Filename.temp_file "gblinear_predict_" ".log" in
     let cmd = sprintf "R --vanilla --slave < %s 2>&1 > %s" r_script_fn r_log_fn in
     if debug then Log.debug "%s" cmd;
     if Sys.command cmd <> 0 then
