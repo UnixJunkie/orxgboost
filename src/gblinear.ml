@@ -89,5 +89,5 @@ let predict ?debug:(debug = false) (maybe_model_fn: Result.t) (data_fn: filename
     else
       let preds = Utls.read_predictions debug (Result.Ok predictions_fn) in
       (if not debug then
-         L.iter Sys.remove [r_script_fn; r_log_fn; predictions_fn]);
+         L.iter Sys.remove [r_script_fn; r_log_fn]);
       preds
