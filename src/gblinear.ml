@@ -27,12 +27,11 @@ let train
   Utls.with_out_file r_script_fn (fun out ->
       fprintf out
         "library(xgboost)\n\
-         training_set <- as.matrix(read.table('%s', colClasses = 'numeric',\n\
+         training_set <- as.matrix(read.table('%s', colClasses = 'numeric', \
                                    header = TRUE))\n\
          cols_count = dim(training_set)[2]\n\
          x <- training_set[, 2:cols_count]\n\
          y <- training_set[, 1:1]\n\
-         stopifnot(cols_count == length(y))\n\
          gbtree <- xgboost(data = x, label = y, booster='gblinear', eta = %f,\n\
                            objective = 'reg:squarederror',\n\
                            eval_metric = 'rmse',\n\
@@ -70,7 +69,7 @@ let predict ?debug:(debug = false) (maybe_model_fn: Result.t) (data_fn: filename
            lines_count = dim(test_set)[1]\n\
            cols_count = dim(test_set)[2]\n\
            x <- test_set[, 2:cols_count]\n\
-           xgb.load('%s')\n\
+           gbtree <- xgb.load('%s')\n\
            values <- predict(gbtree, x)\n\
            stopifnot(lines_count == length(values))\n\
            write.table(values, file = '%s', sep = '\n',\n\
