@@ -2,8 +2,6 @@
 open Printf
 
 module L = BatList
-module Stats = Cpm.RegrStats
-module Utls = Odnnr.Utls
 
 let regr_plot title actual preds =
   let x_min, x_max = L.min_max ~cmp:BatFloat.compare actual in
@@ -17,7 +15,7 @@ let regr_plot title actual preds =
         ) (L.combine actual preds)
     );
   let plot_fn = Filename.temp_file "RFR_regr_plot_" ".gpl" in
-  Utls.string_list_to_file plot_fn
+  Utls.lines_to_file plot_fn
     ["set xlabel 'actual'";
      "set ylabel 'predicted'";
      "set xtics out nomirror";
