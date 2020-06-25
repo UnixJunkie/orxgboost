@@ -15,8 +15,9 @@ depends: [
   "dune"
   "conf-r"
   "dolog" {>= "4.0.0"}
-  "batteries" {with-test}
-  "cpm" {with-test}
+  "batteries"
+  "cpm"
+  "parany" {>= "11.0.2"}
 ]
 post-messages: [
 "Please interact with R to install needed things in user-space:
