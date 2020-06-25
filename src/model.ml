@@ -113,7 +113,10 @@ let main () =
                [-p <float>]: train portion; default=%f\n  \
                [--seed <int>]: RNG seed\n  \
                [--test <test.txt>]: test set\n  \
-               [--nrounds <int>]: number of training rounds\n  \
+               [--eta <float>]: learning rate in ]0.0:1.0]\n  \
+               [--lambda <float>]: L2R param in [0.0:100.0]\n  \
+               [--alpha <float>]: L1R param in [0.0:100.0]\n  \
+               [--nrounds <int>]: number of training rounds >= 1\n  \
                [-np <int>]: max CPU cores\n  \
                [--NxCV <int>]: number of folds of cross validation\n  \
                [-s <filename>]: save trained model to file\n  \
@@ -140,9 +143,9 @@ let main () =
   let eta = CLI.get_float_def ["--eta"] args 0.3 in
   Utls.enforce (0.0 < eta && eta <= 1.0) "eta not in ]0:1]";
   let lambda = CLI.get_float_def ["--lambda"] args 0.0 in
-  Utls.enforce (lambda >= 0.01 && eta <= 100.0) "lambda not in [0.01:100]";
+  Utls.enforce (lambda >= 0.0 && eta <= 100.0) "lambda not in [0.0:100]";
   let alpha = CLI.get_float_def ["--alpha"] args 0.0 in
-  Utls.enforce (alpha >= 0.01 && alpha <= 100.0) "alpha not in [0.01:100]";
+  Utls.enforce (alpha >= 0.0 && alpha <= 100.0) "alpha not in [0.0:100]";
   (* FBR: implement eta-scan, lambda-scan, alpha-scan, nrounds-scan *)
   let nfolds = CLI.get_int_def ["--NxCV"] args 1 in
   let train_portion = CLI.get_float_def ["-p"] args 0.8 in
