@@ -1,7 +1,7 @@
 (library
   (name orxgboost)
   (public_name orxgboost)
-  (modules result utls gbtree gblinear)
+  (modules result utls gbtree gblinear gnuplot)
   (libraries batteries dolog))
 
 (executables
@@ -13,4 +13,4 @@
   (names model)
   (public_names orxgboost_model)
   (modules model)
-  (libraries minicli dolog batteries cpm orxgboost))
+  (libraries minicli dolog batteries cpm orxgboost parany))
