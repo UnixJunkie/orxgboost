@@ -2,7 +2,7 @@ open Printf
 
 module L = BatList
 module Log = Dolog.Log
-    
+
 let with_in_file fn f =
   let input = open_in_bin fn in
   let res = f input in
@@ -27,6 +27,22 @@ let lines_to_file fn lines =
   with_out_file fn (fun out ->
       L.iter (fprintf out "%s\n") lines
     )
+
+(* call f on lines of file *)
+let iter_on_lines_of_file fn f =
+  let input = open_in_bin fn in
+  try
+    while true do
+      f (input_line input)
+    done
+  with End_of_file -> close_in input
+
+let count_lines (fn: string): int =
+  let count = ref 0 in
+  iter_on_lines_of_file fn (fun _line ->
+      incr count
+    );
+  !count
 
 let append_file_to_buffer buff fn =
   with_in_file fn (fun input ->
@@ -61,6 +77,11 @@ let float_list_of_file fn =
       ) [] in
   L.rev res
 
+let float_list_to_file fn l =
+  with_out_file fn (fun out ->
+      L.iter (fprintf out "%f\n") l
+    )
+
 type filename = string
 
 (* capture everything in case of error *)
@@ -89,3 +110,12 @@ let read_predictions (debug: bool) (maybe_predictions_fn: Result.t): float list 
 let run_command verbose cmd =
   if verbose then Log.info "cmd: %s" cmd;
   ignore(Sys.command cmd)
+
+let fst3 (a, _, _) = a
+let snd3 (_, b, _) = b
+let trd3 (_, _, c) = c
+
+(* abort if condition is not met *)
+let enforce (condition: bool) (err_msg: string): unit =
+  if not condition then
+    failwith err_msg
