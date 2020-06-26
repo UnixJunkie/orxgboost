@@ -99,6 +99,14 @@ let train_test verbose save_or_load no_plot config train_fn test_fn =
     train_test_raw verbose save_or_load config train_fn test_fn in
   r2_plot no_plot actual preds
 
+let decode_float_range (range_str: string): float list =
+  L.map float_of_string
+    (BatString.split_on_char ';' range_str)
+
+let decode_int_range (range_str: string): int list =
+  L.map int_of_string
+    (BatString.split_on_char ';' range_str)
+
 let main () =
   Log.(set_log_level INFO);
   Log.color_on ();
@@ -113,10 +121,15 @@ let main () =
                [-p <float>]: train portion; default=%f\n  \
                [--seed <int>]: RNG seed\n  \
                [--test <test.txt>]: test set\n  \
+               [--scan]: toggle scan of hyper params\n  \
                [--eta <float>]: learning rate in ]0.0:1.0]\n  \
-               [--lambda <float>]: L2R param in [0.0:100.0]\n  \
-               [--alpha <float>]: L1R param in [0.0:100.0]\n  \
-               [--nrounds <int>]: number of training rounds >= 1\n  \
+               [--eta-scan [float;float;...]]: eta range\n  \
+               [--lambda <float>]: L2 regularization in [0.0:100.0]\n  \
+               [--lambda-scan \"float;float;...\": lambda range\n  \
+               [--alpha <float>]: L1 regularization in [0.0:100.0]\n  \
+               [--alpha-scan \"float;float;...\": alpha range\n  \
+               [--rounds <int>]: number of training rounds >= 1\n  \
+               [--rounds-scan \"int;int;...\": rounds range\n  \
                [-np <int>]: max CPU cores\n  \
                [--NxCV <int>]: number of folds of cross validation\n  \
                [-s <filename>]: save trained model to file\n  \
@@ -129,6 +142,7 @@ let main () =
       exit 1
     end;
   let verbose = CLI.get_set_bool ["-v"] args in
+  let must_scan = CLI.get_set_bool ["--scan"] args in
   let ncores = CLI.get_int_def ["-np"] args 1 in
   let seed = match CLI.get_int_opt ["--seed"] args with
     | Some s -> s (* reproducible *)
@@ -138,15 +152,30 @@ let main () =
   let no_plot = CLI.get_set_bool ["--no-plot"] args in
   let maybe_train_fn = CLI.get_string_opt ["--train"] args in
   let maybe_test_fn = CLI.get_string_opt ["--test"] args in
-  let nrounds = CLI.get_int_def ["--nrounds"] args 20 in
+  let nrounds = CLI.get_int_def ["--rounds"] args 20 in
   Utls.enforce (nrounds >= 1) "nrounds < 1";
+  (* eta = learning rate *)
   let eta = CLI.get_float_def ["--eta"] args 0.3 in
   Utls.enforce (0.0 < eta && eta <= 1.0) "eta not in ]0:1]";
+  (* lambda = L2 regularization *)
   let lambda = CLI.get_float_def ["--lambda"] args 0.0 in
   Utls.enforce (lambda >= 0.0 && eta <= 100.0) "lambda not in [0.0:100]";
+  (* alpha = L1 regularization *)
   let alpha = CLI.get_float_def ["--alpha"] args 0.0 in
   Utls.enforce (alpha >= 0.0 && alpha <= 100.0) "alpha not in [0.0:100]";
-  (* FBR: implement eta-scan, lambda-scan, alpha-scan, nrounds-scan *)
+  (* all those default ranges are somewhat arbitrary *)
+  let eta_range = match CLI.get_string_opt ["--eta-scan"] args with
+    | Some s -> decode_float_range s
+    | None -> [0.01; 0.02; 0.03; 0.05; 0.1; 0.2; 0.3; 0.5] in
+  let lambda_range = match CLI.get_string_opt ["--lambda-scan"] args with
+    | Some s -> decode_float_range s
+    | None -> [0.01; 0.02; 0.03; 0.05; 0.1; 0.2; 0.3; 0.5; 1.0] in
+  let alpha_range = match CLI.get_string_opt ["--alpha-scan"] args with
+    | Some s -> decode_float_range s
+    | None -> [0.01; 0.02; 0.03; 0.05; 0.1; 0.2; 0.3; 0.5; 1.0] in
+  let rounds_range = match CLI.get_string_opt ["--rounds-scan"] args with
+    | Some s -> decode_int_range s
+    | None -> [10; 20; 30; 50; 100; 200; 300; 500; 1000; 2000; 3000; 5000] in
   let nfolds = CLI.get_int_def ["--NxCV"] args 1 in
   let train_portion = CLI.get_float_def ["-p"] args 0.8 in
   let scores_fn = match CLI.get_string_opt ["-o"] args with
@@ -189,44 +218,45 @@ let main () =
         Log.info "shuffle -> train/test split (p=%.2f)" train_portion;
         let train_fn, test_fn =
           shuffle_then_cut seed train_portion train_fn' in
-        let eta_range = [0.01; 0.02; 0.05; 0.1; 0.2; 0.5; 1.0] in
-        let lambda_range = [0.01; 0.02; 0.05; 0.1; 0.2; 0.5; 1.; 2.; 5.; 10.; 20.; 50.; 100.] in
-        let alpha_range = lambda_range in
-        let rounds_range = [1; 10; 20; 30; 40; 50; 60; 70; 80; 90; 100;
-                            110; 120; 130; 140; 150; 160; 170; 180; 190; 200] in
-        let configs = ref [] in
-        L.iter (fun e ->
-            L.iter (fun l ->
-                L.iter (fun a ->
-                    L.iter (fun n ->
-                        configs := (e, l, a, n) :: !configs
-                      ) rounds_range
-                  ) alpha_range
-              ) lambda_range
-          ) eta_range;
-        (* randomize them so that the parameter space exploration is not
-           sequential/boring *)
-        configs := L.shuffle !configs;
-        Log.info "configs: %d" (L.length !configs);
-        let _best =
-          Parany.Parmap.parfold ncores
-            (fun (e, l, a, n) ->
-               let conf = Gblinear.make_params e l a n in
-               let r2 =
-                 train_test verbose save_or_load no_plot conf train_fn test_fn in
-               (e, l, a, n, r2)
-            )
-            (fun (e, l, a, n, r2) (e', l', a', n', r2') ->
-               if r2' > r2 then
-                 (Log.info "(e,l,a,n):r2 (%.2f, %.2f, %.2f, %d):%.3f"
-                    e' l' a' n' r2';
-                  (e', l', a', n', r2'))
-               else
-                 (Log.warn "(e,l,a,n):r2 (%.2f, %.2f, %.2f, %d):%.3f"
-                    e' l' a' n' r2';
-                  (e, l, a, n, r2))
-            ) (0.0, 0.0, 0.0, 0, 0.0) !configs in
-        ()
+        if not must_scan then
+          let r2 =
+            train_test verbose save_or_load no_plot config train_fn test_fn in
+          Log.info "R2: %.3f" r2
+        else
+          let configs = ref [] in
+          L.iter (fun e ->
+              L.iter (fun l ->
+                  L.iter (fun a ->
+                      L.iter (fun n ->
+                          configs := (e, l, a, n) :: !configs
+                        ) rounds_range
+                    ) alpha_range
+                ) lambda_range
+            ) eta_range;
+          (* randomize them so that the parameter space exploration is not
+             sequential/boring *)
+          configs := L.shuffle !configs;
+          Log.info "configs: %d" (L.length !configs);
+          let (best_e, best_l, best_a, best_n, bets_r2) =
+            Parany.Parmap.parfold ncores
+              (fun (e, l, a, n) ->
+                 let conf = Gblinear.make_params e l a n in
+                 let r2 =
+                   train_test verbose save_or_load no_plot conf train_fn test_fn in
+                 (e, l, a, n, r2)
+              )
+              (fun (e, l, a, n, r2) (e', l', a', n', r2') ->
+                 if r2' > r2 then
+                   (Log.info "(e,l,a,n):r2 (%.2f, %.2f, %.2f, %d):%.3f"
+                      e' l' a' n' r2';
+                    (e', l', a', n', r2'))
+                 else
+                   (Log.warn "(e,l,a,n):r2 (%.2f, %.2f, %.2f, %d):%.3f"
+                      e' l' a' n' r2';
+                    (e, l, a, n, r2))
+              ) (0.0, 0.0, 0.0, 0, 0.0) !configs in
+          Log.info "BEST: (e,l,a,n):r2 (%.2f, %.2f, %.2f, %d):%.3f"
+            best_e best_l best_a best_n bets_r2
       end
 
 let () = main ()
